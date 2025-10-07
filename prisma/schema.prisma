@@ -13,3 +13,132 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// === Enums ===
+enum Role {
+  CREATOR
+  ADMIN
+}
+
+enum PayoutStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
+enum TxnType {
+  CLICK
+  INSTALL
+  PURCHASE
+  ADJUSTMENT
+}
+
+// === Models ===
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      Role     @default(CREATOR)
+  createdAt DateTime @default(now())
+  links     Link[]
+  stats     Stat[]
+  wallet    Wallet?
+}
+
+model Offer {
+  id             String   @id @default(cuid())
+  name           String
+  partner        String
+  iosUrl         String?
+  androidUrl     String?
+  webUrl         String?
+  payoutModel    String
+  payout         Decimal?
+  active         Boolean  @default(true)
+  tasks          Task[]
+  postbackSecret String   @default(uuid())
+  createdAt      DateTime @default(now())
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  offerId     String
+  offer       Offer    @relation(fields: [offerId], references: [id])
+  title       String
+  description String
+  creatives   Json?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  links       Link[]
+}
+
+model Link {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  creatorId   String
+  creator     User         @relation(fields: [creatorId], references: [id])
+  taskId      String
+  task        Task         @relation(fields: [taskId], references: [id])
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  createdAt   DateTime     @default(now())
+  clicks      Click[]
+  conversions Conversion[]
+}
+
+model Click {
+  id        String   @id @default(cuid())
+  linkId    String
+  link      Link     @relation(fields: [linkId], references: [id])
+  clickId   String?  @unique
+  ip        String?
+  ua        String?
+  country   String?
+  device    String?
+  createdAt DateTime @default(now())
+}
+
+model Conversion {
+  id         String   @id @default(cuid())
+  linkId     String
+  link       Link     @relation(fields: [linkId], references: [id])
+  type       TxnType
+  amount     Decimal?
+  externalId String?  @unique
+  raw        Json?
+  createdAt  DateTime @default(now())
+}
+
+model Stat {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  date      DateTime @db.Date
+  clicks    Int      @default(0)
+  installs  Int      @default(0)
+  purchases Int      @default(0)
+  revenue   Decimal  @default(0)
+
+  @@unique([userId, date])
+}
+
+model Wallet {
+  id      String   @id @default(cuid())
+  userId  String   @unique
+  user    User     @relation(fields: [userId], references: [id]) // <-- this is the missing opposite field
+  balance Decimal  @default(0)
+  locked  Decimal  @default(0)
+  payouts Payout[]
+}
+
+model Payout {
+  id        String       @id @default(cuid())
+  walletId  String
+  wallet    Wallet       @relation(fields: [walletId], references: [id])
+  amount    Decimal
+  status    PayoutStatus @default(PENDING)
+  note      String?
+  createdAt DateTime     @default(now())
+}
