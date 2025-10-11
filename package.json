@@ -1,4 +1,7 @@
 {
+  "pnpm": {
+  "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "prisma"]
+},
   "name": "avalidigital-creator",
   "version": "0.1.0",
   "private": true,
